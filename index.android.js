@@ -336,6 +336,11 @@ export default class Arduino extends Component {
             style={[styles.buttonRaised]}
             title='Send 1'
             onPress={() => this.write('1')} />
+          <Button
+            textStyle={{ color: '#FFFFFF' }}
+            style={[styles.buttonRaised]}
+            title='Send 1'
+            onPress={() => this.write('3')} />
         </View>
       </View>
     )
