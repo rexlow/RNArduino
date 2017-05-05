@@ -9,7 +9,9 @@
   "dependencies": {
     "react": "~15.4.0",
     "react-native": "0.41.2",
-    "react-native-bluetooth-serial": "^1.0.0-rc1"
+    "react-native-bluetooth-serial": "^1.0.0-rc1",
+    "iconv-lite": "^0.4.13",
+    "stream": "0.0.2"
   },
   "devDependencies": {
     "babel-jest": "19.0.0",
