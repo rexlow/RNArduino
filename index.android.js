@@ -20,6 +20,8 @@ import { Buffer } from 'buffer'
 global.Buffer = Buffer
 const iconv = require('iconv-lite')
 
+import { QRScannerView } from 'ac-qrcode';
+
 const Button = ({ title, onPress, style, textStyle }) =>
   <TouchableOpacity style={[styles.button, style]} onPress={onPress}>
     <Text style={[styles.buttonText, textStyle]}>{title.toUpperCase()}</Text>
@@ -27,7 +29,7 @@ const Button = ({ title, onPress, style, textStyle }) =>
 
 
 const DeviceList = ({ devices, connectedId, showConnectedIcon, onDevicePress }) =>
-  <ScrollView style={styles.container}>
+  <ScrollView style={[styles.container]}>
     <View style={styles.listContainer}>
       {devices.map((device, i) => {
         return (
@@ -62,7 +64,9 @@ export default class Arduino extends Component {
       devices: [],
       unpairedDevices: [],
       connected: false,
-      section: 0
+      section: 0,
+      balance: 50,
+      modalVisible: false
     }
   }
 
@@ -85,6 +89,10 @@ export default class Arduino extends Component {
       }
       this.setState({ connected: false })
     })
+  }
+
+  setModalVisible(visible) {
+    this.setState({ modalVisible: visible });
   }
 
   /**
@@ -165,12 +173,15 @@ export default class Arduino extends Component {
    * Pair device
    */
   pairDevice(device) {
+    console.log('pairing')
     BluetoothSerial.pairDevice(device.id)
       .then((paired) => {
+        console.log(paired)
         if (paired) {
           Alert.alert(`Device ${device.name} paired successfully`)
           const devices = this.state.devices
           devices.push(device)
+          this.connect(device)
           this.setState({ devices, unpairedDevices: this.state.unpairedDevices.filter((d) => d.id !== device.id) })
         } else {
           Alert.alert(`Device ${device.name} pairing failed`)
@@ -184,10 +195,14 @@ export default class Arduino extends Component {
    * @param  {Object} device
    */
   connect(device) {
+    console.log('connecting')
     this.setState({ connecting: true })
     BluetoothSerial.connect(device.id)
       .then((res) => {
-        Alert.alert(`Connected to device ${device.name}`)
+        Alert.alert('Connected to device the vending machine', 'Please proceed with drink selection!',
+        [
+          {text: 'Ok', onPress: () => this.setState({ section: 0 })}
+        ])
         this.setState({ device, connected: true, connecting: false })
       })
       .catch((err) => Alert.alert(err.message))
@@ -225,17 +240,26 @@ export default class Arduino extends Component {
 
     BluetoothSerial.write(message)
       .then((res) => {
-        Alert.alert('Successfuly wrote to device')
+        if (message === "1") {
+          this.setState({ balance: this.state.balance - 3 })
+          Alert.alert('Drink 1 is purchased!', 'Please enjoy your drink!')
+        } else if (message === "120") {
+          this.setState({ balance: this.state.balance - 3 })
+          Alert.alert('Drink 2 is purchased!', 'Please enjoy your drink!')
+        } else if (message === "248") {
+          this.setState({ balance: this.state.balance - 3 })
+          Alert.alert('Drink 3 is purchased!', 'Please enjoy your drink!')
+        }
         this.setState({ connected: true })
       })
       .catch((err) => Alert.alert(err.message))
   }
 
   onDevicePress(device) {
-    if (this.state.section === 0) {
-      this.connect(device)
-    } else {
+    if (!this.state.connected) {
       this.pairDevice(device)
+    } else {
+      this.connect(device)
     }
   }
 
@@ -256,12 +280,72 @@ export default class Arduino extends Component {
       })
   }
 
+  renderStatusStyle() {
+    if (this.state.connected) {
+      return { backgroundColor: 'lime' }
+    }
+  }
+
+  _renderTitleBar() {
+    return (
+      <View style={{ backgroundColor: 'transparent' }}>
+        <Text style={{ color: 'white', textAlignVertical: 'center', textAlign: 'center', font: 20, padding: 12 }}>Scan your favourite yogurt here</Text>
+      </View>
+    );
+  }
+
+  _renderMenu() {
+    return (
+      <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <Button
+          textStyle={{ color: '#FFFFFF' }}
+          style={styles.buttonRaised}
+          title='DISMISS'
+          onPress={() => this.setModalVisible(false)} />
+      </View>
+    )
+  }
+
+  barcodeReceived(e) {
+    console.log(e)
+    this.setState({ modalVisible: false }, () => {
+      if (this.state.connected) {
+        this.write(e.data)
+      } else {
+        Alert.alert('Connection to vending machine is lost')
+      }
+    })
+  }
+
+  cameraModal() {
+    return (
+      <View style={{ flex: 1 }}>
+        <QRScannerView
+          onScanResultReceived={this.barcodeReceived.bind(this)}
+          renderTopBarView={() => this._renderTitleBar()}
+          renderBottomMenuView={() => this._renderMenu()}
+          hintText=""
+        />
+      </View>
+    )
+  }
+
+  renderConnect() {
+    if (this.state.devices[0].id === "98:D3:32:20:AD:BD") {
+      console.log('vending machine is paired, connecting to it')
+      this.connect(this.state.devices[0])
+    }
+  }
+
   render() {
     const activeTabStyle = { borderBottomWidth: 6, borderColor: '#009688' }
     return (
       <View style={[{ flex: 1 }]}>
         <View style={styles.topBar}>
-          <Text style={styles.heading}>Yogurt Vending Machine1</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+            <View style={[styles.statusStyle, this.renderStatusStyle()]} />
+            <Text style={styles.heading}>Yogurt Vending Machine</Text>
+          </View>
           {Platform.OS === 'android'
             ? (
               <View style={styles.enableInfoWrapper}>
@@ -279,10 +363,10 @@ export default class Arduino extends Component {
           ? (
             <View style={[styles.topBar, { justifyContent: 'center', paddingHorizontal: 0 }]}>
               <TouchableOpacity style={[styles.tab, this.state.section === 0 && activeTabStyle]} onPress={() => this.setState({ section: 0 })}>
-                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>PAIRED DEVICES</Text>
+                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>HOME</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.tab, this.state.section === 1 && activeTabStyle]} onPress={() => this.setState({ section: 1 })}>
-                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>UNPAIRED DEVICES</Text>
+                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>PAIR DEVICES</Text>
               </TouchableOpacity>
             </View>
           ) : null}
@@ -299,13 +383,43 @@ export default class Arduino extends Component {
                 onPress={() => this.cancelDiscovery()} />
             </View>
           ) : (
-            <DeviceList
-              showConnectedIcon={this.state.section === 0}
-              connectedId={this.state.device && this.state.device.id}
-              devices={this.state.section === 0 ? this.state.devices : this.state.unpairedDevices}
-              onDevicePress={(device) => this.onDevicePress(device)} />
-          )}
+            this.state.section === 1 ?
+              <DeviceList
+                showConnectedIcon={this.state.section === 0}
+                connectedId={this.state.device && this.state.device.id}
+                devices={this.state.section === 0 ? this.state.devices : this.state.unpairedDevices}
+                onDevicePress={(device) => this.onDevicePress(device)} /> :
+              <View style={[styles.homeView]}>
+                <View style={{ alignItems: 'center' }}>
+                  <Text style={styles.titleStyle}>PayWave Balance</Text>
+                  <Text style={styles.balanceStyle}>RM {this.state.balance.toString()}</Text>
+                </View>
+                {this.state.connected ?
+                  <Button
+                    textStyle={{ color: '#FFFFFF' }}
+                    style={styles.buttonRaised}
+                    title='Purchase'
+                    onPress={() => this.setModalVisible(true)} /> :
+                  <Button
+                    textStyle={{ color: '#FFFFFF' }}
+                    style={styles.buttonRaised}
+                    title='Not connected'
+                    onPress={() => {
+                      this.setState({ section: 1 })
+                      this.renderConnect()
+                      }} />
+                }
 
+                <Modal
+                  animationType={"slide"}
+                  transparent={false}
+                  visible={this.state.modalVisible}
+                  onRequestClose={() => { console.log('close') }}
+                >
+                  {this.cameraModal()}
+                </Modal>
+              </View>
+          )}
 
         <View style={[{ alignSelf: 'flex-end', height: 52 }]}>
           <ScrollView
@@ -314,33 +428,16 @@ export default class Arduino extends Component {
             {Platform.OS === 'android' && this.state.section === 1
               ? (
                 <Button
-                  title={this.state.discovering ? '... Discovering' : 'Discover devices'}
+                  title={this.state.discovering ? 'Discovering...' : 'Discover devices'}
                   onPress={this.discoverUnpaired.bind(this)} />
               ) : null}
-            {Platform.OS === 'android' && !this.state.isEnabled
+            {Platform.OS === 'android' && (!this.state.isEnabled && this.state.section === 1)
               ? (
                 <Button
                   title='Request enable'
                   onPress={() => this.requestEnable()} />
               ) : null}
           </ScrollView>
-        </View>
-        <View style={styles.sendButtonContainer}>
-          <Button
-            textStyle={{ color: '#FFFFFF' }}
-            style={[styles.buttonRaised]}
-            title='Send 0'
-            onPress={() => this.write('0')} />
-          <Button
-            textStyle={{ color: '#FFFFFF' }}
-            style={[styles.buttonRaised]}
-            title='Send 1'
-            onPress={() => this.write('1')} />
-          <Button
-            textStyle={{ color: '#FFFFFF' }}
-            style={[styles.buttonRaised]}
-            title='Send 1'
-            onPress={() => this.write('3')} />
         </View>
       </View>
     )
@@ -441,6 +538,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center'
+  },
+  statusStyle: {
+    width: 15,
+    height: 15,
+    backgroundColor: 'red',
+    marginRight: 10,
+    borderRadius: 10,
+  },
+  homeView: {
+    flex: 1,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    padding: 10
+  },
+  titleStyle: {
+    fontSize: 24,
+    padding: 5
+  },
+  balanceStyle: {
+    fontSize: 30,
   }
 })
 

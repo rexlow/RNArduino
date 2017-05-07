@@ -7,10 +7,12 @@
     "test": "jest"
   },
   "dependencies": {
+    "ac-qrcode": "^1.0.0",
+    "iconv-lite": "^0.4.13",
     "react": "~15.4.0",
     "react-native": "0.41.2",
     "react-native-bluetooth-serial": "^1.0.0-rc1",
-    "iconv-lite": "^0.4.13",
+    "react-native-camera": "^0.6.0",
     "stream": "0.0.2"
   },
   "devDependencies": {
