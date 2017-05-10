@@ -65,7 +65,7 @@ export default class Arduino extends Component {
       unpairedDevices: [],
       connected: false,
       section: 0,
-      balance: 50,
+      balance: 80,
       modalVisible: false
     }
   }
@@ -240,13 +240,13 @@ export default class Arduino extends Component {
 
     BluetoothSerial.write(message)
       .then((res) => {
-        if (message === "1") {
+        if (message === "A") {
           this.setState({ balance: this.state.balance - 3 })
           Alert.alert('Drink 1 is purchased!', 'Please enjoy your drink!')
-        } else if (message === "120") {
+        } else if (message === "B") {
           this.setState({ balance: this.state.balance - 3 })
           Alert.alert('Drink 2 is purchased!', 'Please enjoy your drink!')
-        } else if (message === "248") {
+        } else if (message === "C") {
           this.setState({ balance: this.state.balance - 3 })
           Alert.alert('Drink 3 is purchased!', 'Please enjoy your drink!')
         }
@@ -311,6 +311,7 @@ export default class Arduino extends Component {
     this.setState({ modalVisible: false }, () => {
       if (this.state.connected) {
         this.write(e.data)
+        console.log('sending....')
       } else {
         Alert.alert('Connection to vending machine is lost')
       }
@@ -338,6 +339,7 @@ export default class Arduino extends Component {
   }
 
   render() {
+    console.log(this.state)
     const activeTabStyle = { borderBottomWidth: 6, borderColor: '#009688' }
     return (
       <View style={[{ flex: 1 }]}>
@@ -366,7 +368,7 @@ export default class Arduino extends Component {
                 <Text style={{ fontSize: 14, color: '#FFFFFF' }}>HOME</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.tab, this.state.section === 1 && activeTabStyle]} onPress={() => this.setState({ section: 1 })}>
-                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>PAIR DEVICES</Text>
+                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>Connect</Text>
               </TouchableOpacity>
             </View>
           ) : null}
