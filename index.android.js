@@ -332,9 +332,13 @@ export default class Arduino extends Component {
   }
 
   renderConnect() {
-    if (this.state.devices[0].id === "98:D3:32:20:AD:BD") {
-      console.log('vending machine is paired, connecting to it')
-      this.connect(this.state.devices[0])
+    if (this.state.enable) {
+      if (this.state.devices[0].id === "98:D3:32:20:AD:BD") {
+        console.log('vending machine is paired, connecting to it')
+        this.connect(this.state.devices[0])
+      }
+    } else {
+      this.enable()
     }
   }
 
@@ -342,7 +346,7 @@ export default class Arduino extends Component {
     console.log(this.state)
     const activeTabStyle = { borderBottomWidth: 6, borderColor: '#009688' }
     return (
-      <View style={[{ flex: 1 }]}>
+      <View style={[{ flex: 1 }, styles.testShit]}>
         <View style={styles.topBar}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={[styles.statusStyle, this.renderStatusStyle()]} />
