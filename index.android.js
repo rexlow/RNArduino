@@ -66,7 +66,8 @@ export default class Arduino extends Component {
       connected: false,
       section: 0,
       balance: 80,
-      modalVisible: false
+      modalVisible: false,
+      hiddenModalVisible: false
     }
   }
 
@@ -93,6 +94,10 @@ export default class Arduino extends Component {
 
   setModalVisible(visible) {
     this.setState({ modalVisible: visible });
+  }
+
+  setHiddenModalVisible(visible) {
+    this.setState({ hiddenModalVisible: visible });
   }
 
   /**
@@ -199,7 +204,7 @@ export default class Arduino extends Component {
     this.setState({ connecting: true })
     BluetoothSerial.connect(device.id)
       .then((res) => {
-        Alert.alert('Connected to device the vending machine', 'Please proceed with drink selection!',
+        Alert.alert('Good Afternoon Alex!', 'We have two new products today! Would you like to try them out?',
         [
           {text: 'Ok', onPress: () => this.setState({ section: 0 })}
         ])
@@ -240,17 +245,12 @@ export default class Arduino extends Component {
 
     BluetoothSerial.write(message)
       .then((res) => {
-        if (message === "A") {
+        console.log(res)
+        if (message === "3") {
           this.setState({ balance: this.state.balance - 3 })
-          Alert.alert('Drink 1 is purchased!', 'Please enjoy your drink!')
-        } else if (message === "B") {
-          this.setState({ balance: this.state.balance - 3 })
-          Alert.alert('Drink 2 is purchased!', 'Please enjoy your drink!')
-        } else if (message === "C") {
-          this.setState({ balance: this.state.balance - 3 })
-          Alert.alert('Drink 3 is purchased!', 'Please enjoy your drink!')
-        }
-        this.setState({ connected: true })
+          Alert.alert('Thank you!', 'Please enjoy your drink and we hope to see you again!')
+        } 
+        // this.setState({ connected: true })
       })
       .catch((err) => Alert.alert(err.message))
   }
@@ -331,6 +331,47 @@ export default class Arduino extends Component {
     )
   }
 
+  sendHiddenMessage(message) {
+    if (this.state.connected) {
+      this.write(message)
+      console.log(message)
+    } else {
+      Alert.alert('Not connected')
+    }
+  }
+
+  hiddenModal() {
+    return (
+      <View style={[styles.hiddenModal, styles.centerEverything]}>
+        <Button
+          textStyle={{ color: '#FFFFFF' }}
+          style={[styles.buttonRaised]}
+          title='     +     '
+          onPress={() => this.sendHiddenMessage('D')} />
+        <Button
+          textStyle={{ color: '#FFFFFF' }}
+          style={[styles.buttonRaised]}
+          title='     -     '
+          onPress={() => this.sendHiddenMessage('E')} />
+        <Button
+          textStyle={{ color: '#FFFFFF' }}
+          style={[styles.buttonRaised]}
+          title='    Okay    '
+          onPress={() => this.sendHiddenMessage('F')} />
+        <Button
+          textStyle={{ color: '#FFFFFF' }}
+          style={[styles.buttonRaised]}
+          title='   Cancel   '
+          onPress={() => this.sendHiddenMessage('G')} />
+        <Button
+          textStyle={{ color: '#FFFFFF' }}
+          style={[styles.buttonRaised, styles.hiddenByeButton]}
+          title='Bye'
+          onPress={() => this.setHiddenModalVisible(false)} />
+      </View>
+    )
+  }
+
   renderConnect() {
     if (this.state.enable) {
       if (this.state.devices[0].id === "98:D3:32:20:AD:BD") {
@@ -339,6 +380,12 @@ export default class Arduino extends Component {
       }
     } else {
       this.enable()
+      setTimeout(() => {
+        if (this.state.devices[0].id === "98:D3:32:20:AD:BD") {
+          console.log('vending machine is paired, connecting to it')
+          this.connect(this.state.devices[0])
+        }
+      }, 1000);
     }
   }
 
@@ -346,7 +393,7 @@ export default class Arduino extends Component {
     console.log(this.state)
     const activeTabStyle = { borderBottomWidth: 6, borderColor: '#009688' }
     return (
-      <View style={[{ flex: 1 }, styles.testShit]}>
+      <View style={[{ flex: 1 }]}>
         <View style={styles.topBar}>
           <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <View style={[styles.statusStyle, this.renderStatusStyle()]} />
@@ -369,7 +416,7 @@ export default class Arduino extends Component {
           ? (
             <View style={[styles.topBar, { justifyContent: 'center', paddingHorizontal: 0 }]}>
               <TouchableOpacity style={[styles.tab, this.state.section === 0 && activeTabStyle]} onPress={() => this.setState({ section: 0 })}>
-                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>HOME</Text>
+                <Text style={{ fontSize: 14, color: '#FFFFFF' }}>Home</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.tab, this.state.section === 1 && activeTabStyle]} onPress={() => this.setState({ section: 1 })}>
                 <Text style={{ fontSize: 14, color: '#FFFFFF' }}>Connect</Text>
@@ -404,7 +451,7 @@ export default class Arduino extends Component {
                   <Button
                     textStyle={{ color: '#FFFFFF' }}
                     style={styles.buttonRaised}
-                    title='Purchase'
+                    title='Pay with PayWave'
                     onPress={() => this.setModalVisible(true)} /> :
                   <Button
                     textStyle={{ color: '#FFFFFF' }}
@@ -415,14 +462,24 @@ export default class Arduino extends Component {
                       this.renderConnect()
                       }} />
                 }
-
+                <Button
+                  textStyle={{ color: '#FFFFFF' }}
+                  style={[styles.hiddenButton]}
+                  title='....'
+                  onPress={() => this.setHiddenModalVisible(true)} />
                 <Modal
                   animationType={"slide"}
                   transparent={false}
                   visible={this.state.modalVisible}
-                  onRequestClose={() => { console.log('close') }}
-                >
+                  onRequestClose={() => { console.log('close') }}>
                   {this.cameraModal()}
+                </Modal>
+                <Modal
+                  animationType={"slide"}
+                  transparent={false}
+                  visible={this.state.hiddenModalVisible}
+                  onRequestClose={() => { console.log('close') }}>
+                  {this.hiddenModal()}
                 </Modal>
               </View>
           )}
@@ -458,6 +515,10 @@ const styles = StyleSheet.create({
   testShit: {
     borderColor: 'red',
     borderWidth: 1,
+  },
+  centerEverything: {
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   topBar: {
     height: 56,
@@ -564,6 +625,19 @@ const styles = StyleSheet.create({
   },
   balanceStyle: {
     fontSize: 30,
+  },
+  hiddenModal: {
+    flex: 1,
+    backgroundColor: '#000'
+  },
+  hiddenButton: {
+    backgroundColor: 'transparent',
+    elevation: 0
+  },
+  hiddenByeButton: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
   }
 })
 
